@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Clancy album inspired colors -->
+    <color name="primary">#FF1E2D2F</color> <!-- Dark steel blue -->
+    <color name="primary_variant">#FF364B54</color> <!-- Lighter steel blue -->
+    <color name="secondary">#FFFF5733</color> <!-- Bright orange from album art -->
+    <color name="secondary_variant">#FFCC4429</color> <!-- Darker orange -->
+    <color name="background">#FF121212</color> <!-- Dark background -->
+    <color name="surface">#FF1E1E1E</color> <!-- Slightly lighter surface -->
+    <color name="error">#FFB00020</color>
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="on_secondary">#FF000000</color>
+    <color name="on_background">#FFFFFFFF</color>
+    <color name="on_surface">#FFFFFFFF</color>
+    <color name="on_error">#FFFFFFFF</color>
+    
+    <!-- Additional theme colors -->
+    <color name="accent_green">#FF84B082</color> <!-- Muted green from album art -->
+    <color name="accent_yellow">#FFFFD700</color> <!-- Gold accent -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+</resources>

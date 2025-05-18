@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Finance App</string>
+    <string name="home">Главная</string>
+    <string name="statistics">Статистика</string>
+    <string name="settings">Настройки</string>
+    <string name="add_income">Добавить доход</string>
+    <string name="add_expense">Добавить расход</string>
+    <string name="recent_transactions">Последние транзакции</string>
+    <string name="welcome">Добро пожаловать!</string>
+    <string name="welcome_subtitle">Управляйте своими финансами с легкостью</string>
+    <string name="balance">Баланс</string>
+    <string name="income">Доходы</string>
+    <string name="expense">Расходы</string>
+    <string name="category">Категория</string>
+    <string name="amount">Сумма</string>
+    <string name="description">Описание</string>
+    <string name="date">Дата</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="delete">Удалить</string>
+    <string name="edit">Редактировать</string>
+    <string name="about">О проекте</string>
+    <string name="version">Версия: %1$s</string>
+    <string name="developer">Разработчик: %1$s</string>
+    <string name="dark_theme">Темная тема</string>
+    <string name="pin_code">PIN-код</string>
+    <string name="set_pin">Установить PIN-код</string>
+    <string name="pin_hint">PIN-код (4 цифры)</string>
+    <string name="set">Установить</string>
+    <string name="export_to_excel">Экспорт в Excel</string>
+    <string name="expense_categories">Категории расходов</string>
+    <string name="back">Назад</string>
+</resources>
