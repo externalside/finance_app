@@ -6,33 +6,42 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.financeapp.R
 import com.example.financeapp.ui.viewmodels.SettingsViewModel
+import com.example.financeapp.ui.viewmodel.SmsImportState
+import com.example.financeapp.ui.viewmodel.TransactionViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    navController: NavController,
-    viewModel: SettingsViewModel = hiltViewModel()
+    onNavigateBack: () -> Unit,
+    onNavigateToAbout: () -> Unit,
+    onRequestSmsPermission: () -> Unit,
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
+    transactionViewModel: TransactionViewModel = hiltViewModel()
 ) {
     var showPinDialog by remember { mutableStateOf(false) }
-    val isDarkMode by viewModel.isDarkMode.collectAsState()
-    val isPinEnabled by viewModel.isPinEnabled.collectAsState()
+    val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
+    val isPinEnabled by settingsViewModel.isPinEnabled.collectAsState()
+    val smsImportState by transactionViewModel.smsImportState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Настройки") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
                     }
                 }
@@ -47,27 +56,135 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Настройки темы
-            ThemeSettingsCard(
-                isDarkMode = isDarkMode,
-                onThemeChange = { viewModel.setDarkMode(it) }
-            )
-            
-            // Настройки безопасности
-            SecuritySettingsCard(
-                isPinEnabled = isPinEnabled,
-                onPinSettingChange = { enabled ->
-                    if (enabled) {
-                        showPinDialog = true
-                    } else {
-                        viewModel.setPinEnabled(false)
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
+                            contentDescription = null
+                        )
+                        Text(text = if (isDarkMode) "Тёмная тема" else "Светлая тема")
                     }
+                    Switch(
+                        checked = isDarkMode,
+                        onCheckedChange = { settingsViewModel.toggleDarkMode() }
+                    )
                 }
-            )
+            }
+
+            // Настройки безопасности
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null
+                        )
+                        Text(text = "PIN-код")
+                    }
+                    Switch(
+                        checked = isPinEnabled,
+                        onCheckedChange = { enabled ->
+                            if (enabled) {
+                                showPinDialog = true
+                            } else {
+                                settingsViewModel.setPinEnabled(false)
+                            }
+                        }
+                    )
+                }
+            }
 
             // Кнопка "О приложении"
             AboutButton(
-                onClick = { navController.navigate("about") }
+                onClick = onNavigateToAbout
             )
+
+            // SMS Import Card
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "SMS Импорт",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Импорт транзакций из SMS сообщений",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    when (smsImportState) {
+                        is SmsImportState.Initial -> {
+                            Button(
+                                onClick = {
+                                    if (transactionViewModel.hasSmsPermissions()) {
+                                        transactionViewModel.importSmsTransactions()
+                                    } else {
+                                        onRequestSmsPermission()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Message,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "Импортирование")
+                            }
+                        }
+                        is SmsImportState.Loading -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        }
+                        is SmsImportState.Success -> {
+                            Text(
+                                text = "Импорт завершён успешно!",
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        }
+                        is SmsImportState.Error -> {
+                            Text(
+                                text = (smsImportState as SmsImportState.Error).message,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -77,88 +194,16 @@ fun SettingsScreen(
             onDismiss = { 
                 showPinDialog = false
                 // Возвращаем переключатель в исходное положение
-                if (!viewModel.isPinSet()) {
-                    viewModel.setPinEnabled(false)
+                if (!settingsViewModel.isPinSet()) {
+                    settingsViewModel.setPinEnabled(false)
                 }
             },
             onPinSet = { newPin ->
-                if (viewModel.setPin(newPin)) {
+                if (settingsViewModel.setPin(newPin)) {
                     showPinDialog = false
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun ThemeSettingsCard(
-    isDarkMode: Boolean,
-    onThemeChange: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
-                    contentDescription = "Тема"
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Темная тема",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-            Switch(
-                checked = isDarkMode,
-                onCheckedChange = onThemeChange
-            )
-        }
-    }
-}
-
-@Composable
-private fun SecuritySettingsCard(
-    isPinEnabled: Boolean,
-    onPinSettingChange: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "PIN-код"
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "PIN-код",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-            Switch(
-                checked = isPinEnabled,
-                onCheckedChange = onPinSettingChange
-            )
-        }
     }
 }
 

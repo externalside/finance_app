@@ -2,39 +2,47 @@ package com.example.financeapp.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.financeapp.data.model.Category
 import com.example.financeapp.data.model.Transaction
 import com.example.financeapp.data.model.TransactionType
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.background
 
-@OptIn(ExperimentalAnimationApi::class)
+
 @Composable
 fun TransactionItem(
     transaction: Transaction,
     onItemClick: () -> Unit,
     onLongClick: () -> Unit,
+    isSelected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val formattedDate = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(transaction.date)
-    
+    val numberFormat = remember { NumberFormat.getCurrencyInstance(Locale("ru", "RU")) }
+    val dateFormat = remember { SimpleDateFormat("dd.MM.yyyy", Locale("ru", "RU")) }
+
     var isVisible by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(Unit) {
         isVisible = true
+    }
+
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
     }
 
     AnimatedVisibility(
@@ -60,9 +68,10 @@ fun TransactionItem(
                         onTap = { onItemClick() },
                         onLongPress = { onLongClick() }
                     )
-                },
+                }
+                .background(backgroundColor),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                containerColor = backgroundColor
             ),
             elevation = CardDefaults.cardElevation(3.dp)
         ) {
@@ -70,34 +79,55 @@ fun TransactionItem(
                 modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = transaction.category,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                // Левая часть: иконка + описание + дата/категория
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = when (transaction.category) {
+                            Category.FOOD -> Icons.Default.RestaurantMenu
+                            Category.TRANSPORT -> Icons.Default.DirectionsCar
+                            Category.SHOPPING -> Icons.Default.ShoppingBag
+                            Category.ENTERTAINMENT -> Icons.Default.Theaters
+                            Category.HEALTH -> Icons.Default.HealthAndSafety
+                            Category.HOUSING -> Icons.Default.Home
+                            Category.CAFE -> Icons.Default.LocalCafe
+                            Category.EDUCATION -> Icons.Default.School
+                            Category.SALARY -> Icons.Default.Payments
+                            Category.TRANSFER -> Icons.Default.SwapHoriz
+                            Category.OTHER -> Icons.Default.Label
+                        },
+                        contentDescription = transaction.category.title,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        text = formattedDate,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (transaction.description.isNotBlank()) {
+
+                    Column {
                         Text(
                             text = transaction.description,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "${transaction.category.title} • ${dateFormat.format(transaction.date)}",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
+                Spacer(modifier = Modifier.width(24.dp)) // Отступ между датой и суммой
+
+                // Сумма справа
                 Text(
-                    text = (if (transaction.type == TransactionType.INCOME) "+ " else "- ") +
-                            String.format("%.2f ₽", kotlin.math.abs(transaction.amount)),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    text = numberFormat.format(transaction.amount),
+                    style = MaterialTheme.typography.titleMedium,
                     color = if (transaction.type == TransactionType.INCOME)
                         MaterialTheme.colorScheme.primary
                     else
-                        MaterialTheme.colorScheme.error
+                        MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }

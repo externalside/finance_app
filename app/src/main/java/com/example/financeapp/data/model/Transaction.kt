@@ -10,10 +10,10 @@ data class Transaction(
     val id: Long = 0,
     val amount: Double,
     val type: TransactionType,
-    val category: String,
+    val category: Category,
     val description: String,
     val date: Date,
-    val isRecurring: Boolean = false
+    val source: String = "MANUAL" // MANUAL или SMS
 )
 
 enum class TransactionType {

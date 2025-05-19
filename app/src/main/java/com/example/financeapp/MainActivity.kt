@@ -1,74 +1,128 @@
 package com.example.financeapp
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.financeapp.ui.screens.*
 import com.example.financeapp.ui.theme.FinanceAppTheme
 import com.example.financeapp.ui.viewmodels.SettingsViewModel
+import com.example.financeapp.ui.viewmodel.TransactionViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import androidx.compose.foundation.layout.Column
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private val transactionViewModel: TransactionViewModel by viewModels()
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                transactionViewModel.importSmsTransactions()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Оптимизация отрисовки окна
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        
+
         setContent {
+            val transactionViewModel: TransactionViewModel = hiltViewModel()
             val settingsViewModel: SettingsViewModel = hiltViewModel()
+
             val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
             val isPinEnabled by settingsViewModel.isPinEnabled.collectAsState()
-            var showPinDialog by remember { mutableStateOf(isPinEnabled) }
-            var isAuthenticated by remember { mutableStateOf(!isPinEnabled) }
 
-            DisposableEffect(Unit) {
-                onDispose {
-                    // Сохраняем состояние темы при закрытии приложения
-                    settingsViewModel.saveDarkModeState(isDarkMode)
+            var showPinDialog by remember { mutableStateOf(true) }
+            var isAuthenticated by remember { mutableStateOf(false) }
+
+            // Если PIN выключен — сразу авторизуем
+            LaunchedEffect(isPinEnabled) {
+                if (!isPinEnabled) {
+                    isAuthenticated = true
+                    showPinDialog = false
                 }
             }
 
             FinanceAppTheme(
                 darkTheme = isDarkMode,
-                dynamicColor = false // Отключаем динамические цвета для консистентности
+                dynamicColor = false
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (showPinDialog && !isAuthenticated) {
+                    if (!isAuthenticated && showPinDialog && isPinEnabled) {
                         PinEntryDialog(
-                            onPinEntered = { pin ->
-                                if (settingsViewModel.validatePin(pin)) {
+                            onPinEntered = { enteredPin ->
+                                if (settingsViewModel.validatePin(enteredPin)) {
                                     isAuthenticated = true
                                     showPinDialog = false
                                 }
                             }
                         )
                     } else {
-                        FinanceAppNavigation()
+                        val navController = rememberNavController()
+
+                        NavHost(
+                            navController = navController,
+                            startDestination = "welcome"
+                        ) {
+                            composable("welcome") {
+                                WelcomeScreen(
+                                    onContinueClicked = {
+                                        navController.navigate("home") {
+                                            popUpTo("welcome") { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+                            composable("home") {
+                                HomeScreen(
+                                    onNavigateToStatistics = { navController.navigate("statistics") },
+                                    onNavigateToSettings = { navController.navigate("settings") }
+                                )
+                            }
+                            composable("statistics") {
+                                StatisticsScreen(
+                                    onNavigateBack = { navController.navigateUp() }
+                                )
+                            }
+                            composable("settings") {
+                                SettingsScreen(
+                                    onNavigateBack = { navController.navigateUp() },
+                                    onNavigateToAbout = { navController.navigate("about") },
+                                    onRequestSmsPermission = {
+                                        requestPermissionLauncher.launch(Manifest.permission.READ_SMS)
+                                    }
+                                )
+                            }
+                            composable("about") {
+                                AboutScreen(
+                                    onNavigateBack = { navController.navigateUp() }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -76,132 +130,46 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FinanceAppNavigation() {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-    
-    // Определение пунктов навигации
-    val navigationItems = listOf(
-        NavigationItem(
-            route = "home",
-            icon = Icons.Default.Home,
-            label = "Главная"
-        ),
-        NavigationItem(
-            route = "settings",
-            icon = Icons.Default.Settings,
-            label = "Настройки"
-        )
-    )
-    
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                navigationItems.forEach { item ->
-                    NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                        selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
-                        onClick = {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                            // Если переходим на главную, закрываем все остальные экраны
-                            if (item.route == "home") {
-                                navController.popBackStack("statistics", true)
-                            }
-                        }
-                    )
-                }
-            }
-        }
-    ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = "home",
-            modifier = Modifier.padding(paddingValues)
-        ) {
-            composable("home") { 
-                HomeScreen(
-                    onNavigateToStatistics = { navController.navigate("statistics") }
-                )
-            }
-            composable("statistics") {
-                StatisticsScreen(
-                    navController = navController
-                )
-            }
-            composable("settings") {
-                SettingsScreen(
-                    navController = navController
-                )
-            }
-            composable("about") {
-                AboutScreen(
-                    navController = navController
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PinEntryDialog(
+fun PinEntryDialog(
     onPinEntered: (String) -> Unit
 ) {
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
 
     AlertDialog(
-        onDismissRequest = { /* Нельзя закрыть */ },
+        onDismissRequest = {},
         title = { Text("Введите PIN-код") },
         text = {
             Column {
                 OutlinedTextField(
                     value = pin,
                     onValueChange = {
-                        if (it.length <= 4 && it.all { char -> char.isDigit() }) {
+                        if (it.length <= 4 && it.all(Char::isDigit)) {
                             pin = it
                             error = ""
                         }
                     },
                     label = { Text("PIN-код") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword
-                    ),
-                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     isError = error.isNotEmpty(),
-                    supportingText = if (error.isNotEmpty()) {
-                        { Text(error) }
-                    } else null
+                    supportingText = {
+                        if (error.isNotEmpty()) Text(error, color = MaterialTheme.colorScheme.error)
+                    }
                 )
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    if (pin.length == 4) {
-                        onPinEntered(pin)
-                        pin = ""
-                    } else {
-                        error = "PIN-код должен состоять из 4 цифр"
-                    }
+            TextButton(onClick = {
+                if (pin.length == 4) {
+                    onPinEntered(pin)
+                    pin = ""
+                } else {
+                    error = "Введите 4 цифры"
                 }
-            ) {
+            }) {
                 Text("Войти")
             }
         }
     )
 }
-
-private data class NavigationItem(
-    val route: String,
-    val icon: ImageVector,
-    val label: String
-) 

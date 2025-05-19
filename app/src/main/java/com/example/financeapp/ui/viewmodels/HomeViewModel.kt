@@ -21,6 +21,9 @@ class HomeViewModel @Inject constructor(
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
     val transactions: StateFlow<List<Transaction>> = _transactions.asStateFlow()
 
+    private val _selectedTransactions = MutableStateFlow<Set<Transaction>>(emptySet())
+    val selectedTransactions: StateFlow<Set<Transaction>> = _selectedTransactions.asStateFlow()
+
     init {
         loadTransactions()
     }
@@ -30,24 +33,14 @@ class HomeViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 repository.getAllTransactions()
-                    .catch { e -> 
-                        // Обработка ошибок
-                        _isLoading.value = false
-                    }
-                    .collect { transactions ->
-                        _transactions.value = transactions
+                    .catch { _isLoading.value = false }
+                    .collect { loaded ->
+                        _transactions.value = loaded
                         _isLoading.value = false
                     }
             } catch (e: Exception) {
-                // Обработка ошибок
                 _isLoading.value = false
             }
-        }
-    }
-
-    fun onTransactionClick(transaction: Transaction) {
-        viewModelScope.launch {
-            // TODO: Реализовать обработку клика по транзакции
         }
     }
 
@@ -55,9 +48,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 repository.insertTransaction(transaction)
-            } catch (e: Exception) {
-                // Обработка ошибок
-            }
+                loadTransactions()
+            } catch (_: Exception) {}
         }
     }
 
@@ -65,9 +57,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 repository.updateTransaction(transaction)
-            } catch (e: Exception) {
-                // Обработка ошибок
-            }
+                loadTransactions()
+            } catch (_: Exception) {}
         }
     }
 
@@ -75,9 +66,34 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 repository.deleteTransaction(transaction)
-            } catch (e: Exception) {
-                // Обработка ошибок
-            }
+                _selectedTransactions.value = _selectedTransactions.value - transaction
+                loadTransactions()
+            } catch (_: Exception) {}
         }
     }
-} 
+
+    fun toggleSelection(transaction: Transaction) {
+        val current = _selectedTransactions.value.toMutableSet()
+        if (current.contains(transaction)) {
+            current.remove(transaction)
+        } else {
+            current.add(transaction)
+        }
+        _selectedTransactions.value = current
+    }
+
+    fun clearSelection() {
+        _selectedTransactions.value = emptySet()
+    }
+
+    fun deleteSelectedTransactions() {
+        viewModelScope.launch {
+            try {
+                val selected = _selectedTransactions.value
+                selected.forEach { repository.deleteTransaction(it) }
+                _selectedTransactions.value = emptySet()
+                loadTransactions()
+            } catch (_: Exception) {}
+        }
+    }
+}

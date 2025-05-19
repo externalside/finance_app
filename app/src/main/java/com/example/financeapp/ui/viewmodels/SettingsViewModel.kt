@@ -5,10 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -16,60 +17,86 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    private val sharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val _isDarkMode = MutableStateFlow(false)
+    val isDarkMode: StateFlow<Boolean> = _isDarkMode
 
-    private val _isDarkMode = MutableStateFlow(sharedPreferences.getBoolean("dark_mode", false))
-    val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
+    private val _isPinEnabled = MutableStateFlow(false)
+    val isPinEnabled: StateFlow<Boolean> = _isPinEnabled
 
-    private val _isPinEnabled = MutableStateFlow(sharedPreferences.getBoolean("pin_enabled", false))
-    val isPinEnabled: StateFlow<Boolean> = _isPinEnabled.asStateFlow()
+    private val _pin = MutableStateFlow("")
+    val pin: StateFlow<String> = _pin
 
-    private val _pin = MutableStateFlow(sharedPreferences.getString("pin", "") ?: "")
-    val pin: StateFlow<String> = _pin.asStateFlow()
+    init {
+        loadDarkModeState()
+        loadPinSettings()
+    }
 
-    fun setDarkMode(enabled: Boolean) {
+    private fun loadPinSettings() {
         viewModelScope.launch {
-            _isDarkMode.value = enabled
-            saveDarkModeState(enabled)
+            withContext(Dispatchers.IO) {
+                val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                val savedPin = prefs.getString("pin", "") ?: ""
+                val pinEnabled = prefs.getBoolean("pin_enabled", false)
+                _pin.value = savedPin
+                _isPinEnabled.value = pinEnabled
+            }
         }
     }
 
-    fun saveDarkModeState(enabled: Boolean) {
-        sharedPreferences.edit().putBoolean("dark_mode", enabled).apply()
+    private fun loadDarkModeState() {
+        viewModelScope.launch {
+            _isDarkMode.value = withContext(Dispatchers.IO) {
+                context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .getBoolean("dark_mode", false)
+            }
+        }
+    }
+
+    fun toggleDarkMode() {
+        viewModelScope.launch {
+            val newValue = !_isDarkMode.value
+            withContext(Dispatchers.IO) {
+                context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("dark_mode", newValue)
+                    .apply()
+            }
+            _isDarkMode.value = newValue
+        }
     }
 
     fun setPinEnabled(enabled: Boolean) {
-        if (!enabled) {
-            // Если PIN отключается, очищаем его
-            viewModelScope.launch {
-                _isPinEnabled.value = false
-                _pin.value = ""
-                sharedPreferences.edit()
-                    .putBoolean("pin_enabled", false)
-                    .putString("pin", "")
+        viewModelScope.launch {
+            _isPinEnabled.value = enabled
+            withContext(Dispatchers.IO) {
+                context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("pin_enabled", enabled)
                     .apply()
             }
         }
-        // Если PIN включается, не меняем состояние до успешного ввода PIN-кода
     }
 
-    fun setPin(newPin: String): Boolean {
-        if (newPin.length == 4) {
+    fun setPin(pin: String): Boolean {
+        if (pin.length == 4) {
             viewModelScope.launch {
-                _pin.value = newPin
+                _pin.value = pin
                 _isPinEnabled.value = true
-                sharedPreferences.edit()
-                    .putString("pin", newPin)
-                    .putBoolean("pin_enabled", true)
-                    .apply()
+                withContext(Dispatchers.IO) {
+                    context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("pin", pin)
+                        .putBoolean("pin_enabled", true)
+                        .apply()
+                }
             }
             return true
         }
         return false
     }
 
-    fun validatePin(enteredPin: String): Boolean {
-        return enteredPin == _pin.value
+    fun validatePin(pin: String): Boolean {
+        return pin == _pin.value
     }
 
     fun isPinSet(): Boolean {

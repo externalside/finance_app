@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.example.financeapp"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.financeapp"
@@ -22,7 +22,6 @@ android {
             useSupportLibrary = true
         }
 
-        // Room schema location
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments += mapOf(
@@ -51,7 +50,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.10"
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
 
     compileOptions {
@@ -73,7 +72,6 @@ android {
 
 dependencies {
     val roomVersion = "2.6.1"
-    val composeVersion = "1.6.2"
     val hiltVersion = "2.50"
     
     // Core Android dependencies
@@ -86,13 +84,18 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     
     // Compose
-    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+    val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.runtime:runtime")
+    implementation("androidx.compose.runtime:runtime-livedata")
     
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
@@ -105,8 +108,8 @@ dependencies {
     
     // Room Database
     implementation("androidx.room:room-runtime:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
     
     // Hilt
     implementation("com.google.dagger:hilt-android:$hiltVersion")
@@ -120,19 +123,22 @@ dependencies {
     // Charts
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     
-    // Excel export
-    implementation("org.apache.poi:poi:5.2.3")
-    implementation("org.apache.poi:poi-ooxml:5.2.3")
-    
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     
     // Kotlin Standard Library
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
+    
+    // Foundation
+    implementation("androidx.compose.foundation:foundation-layout:1.6.1")
+    implementation("androidx.compose.foundation:foundation:1.6.1")
+    
+    // Material Design Icons
+    implementation("androidx.compose.material:material-icons-core:1.6.1")
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
 }

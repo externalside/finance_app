@@ -4,6 +4,7 @@ import com.example.financeapp.data.db.TransactionDao
 import com.example.financeapp.data.model.CategoryTotal
 import com.example.financeapp.data.model.Transaction
 import com.example.financeapp.data.model.TransactionType
+import com.example.financeapp.data.service.SmsService
 import kotlinx.coroutines.flow.Flow
 import java.util.Date
 import javax.inject.Inject
@@ -11,7 +12,8 @@ import javax.inject.Singleton
 
 @Singleton
 class TransactionRepository @Inject constructor(
-    private val transactionDao: TransactionDao
+    private val transactionDao: TransactionDao,
+    private val smsService: SmsService
 ) {
     fun getAllTransactions(): Flow<List<Transaction>> = 
         transactionDao.getAllTransactions()
@@ -39,4 +41,13 @@ class TransactionRepository @Inject constructor(
 
     fun getCategoryTotals(type: TransactionType): Flow<List<CategoryTotal>> =
         transactionDao.getCategoryTotals(type)
+
+    fun hasSmsPermissions(): Boolean = smsService.hasRequiredPermissions()
+
+    suspend fun importSmsTransactions() {
+        val transactions = smsService.parseTransactions()
+        transactions.forEach { transaction ->
+            insertTransaction(transaction)
+        }
+    }
 } 

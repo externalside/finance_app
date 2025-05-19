@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.Telephony
 import com.example.financeapp.data.model.Transaction
 import com.example.financeapp.data.model.TransactionType
+import com.example.financeapp.data.model.Category
 import java.util.*
 import java.util.regex.Pattern
 import javax.inject.Inject
@@ -27,7 +28,7 @@ class SmsParser @Inject constructor(
         )
 
         private val INCOME_PATTERNS = listOf(
-            Pattern.compile("зачисление|поступление|получение", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("зачисление|поступление|пополнение", Pattern.CASE_INSENSITIVE),
             Pattern.compile("(\\d+[.,]\\d{2})\\s*(?:RUB|USD|EUR|₽|\\$|€)", Pattern.CASE_INSENSITIVE)
         )
     }
@@ -43,7 +44,7 @@ class SmsParser @Inject constructor(
                     if (BANK_NUMBERS.contains(address)) {
                         val body = cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY))
                         val date = Date(cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)))
-                        
+
                         parseTransaction(body, date)?.let { transactions.add(it) }
                     }
                 } while (cursor.moveToNext())
@@ -68,14 +69,14 @@ class SmsParser @Inject constructor(
     }
 
     private fun parseTransaction(body: String, date: Date): Transaction? {
-        // Проверяем на расход
-        for (pattern in EXPENSE_PATTERNS) {
-            val matcher = pattern.matcher(body)
-            if (matcher.find()) {
-                val amount = matcher.group(1)?.replace(",", ".")?.toDoubleOrNull() ?: continue
+        // Расход
+        if (EXPENSE_PATTERNS[0].matcher(body).find()) {
+            val matcher = EXPENSE_PATTERNS[1].matcher(body)
+            if (matcher.find() && matcher.groupCount() >= 1) {
+                val amount = matcher.group(1)?.replace(",", ".")?.toDoubleOrNull() ?: return null
                 return Transaction(
                     amount = amount,
-                    category = detectCategory(body),
+                    category = parseSms(body),
                     description = body,
                     date = date,
                     type = TransactionType.EXPENSE
@@ -83,14 +84,14 @@ class SmsParser @Inject constructor(
             }
         }
 
-        // Проверяем на доход
-        for (pattern in INCOME_PATTERNS) {
-            val matcher = pattern.matcher(body)
-            if (matcher.find()) {
-                val amount = matcher.group(1)?.replace(",", ".")?.toDoubleOrNull() ?: continue
+        // Доход
+        if (INCOME_PATTERNS[0].matcher(body).find()) {
+            val matcher = INCOME_PATTERNS[1].matcher(body)
+            if (matcher.find() && matcher.groupCount() >= 1) {
+                val amount = matcher.group(1)?.replace(",", ".")?.toDoubleOrNull() ?: return null
                 return Transaction(
                     amount = amount,
-                    category = detectCategory(body),
+                    category = parseSms(body),
                     description = body,
                     date = date,
                     type = TransactionType.INCOME
@@ -101,15 +102,13 @@ class SmsParser @Inject constructor(
         return null
     }
 
-    private fun detectCategory(body: String): String {
-        // Простая логика определения категории по ключевым словам
+    fun parseSms(body: String): Category {
         return when {
-            body.contains(Regex("(продукты|супермаркет|магазин)", RegexOption.IGNORE_CASE)) -> "Продукты"
-            body.contains(Regex("(кафе|ресторан|бар)", RegexOption.IGNORE_CASE)) -> "Рестораны"
-            body.contains(Regex("(такси|метро|автобус|транспорт)", RegexOption.IGNORE_CASE)) -> "Транспорт"
-            body.contains(Regex("(развлечения|кино|театр)", RegexOption.IGNORE_CASE)) -> "Развлечения"
-            body.contains(Regex("(коммунальные|жкх|квартплата)", RegexOption.IGNORE_CASE)) -> "ЖКХ"
-            else -> "Прочее"
+            body.contains(Regex("(продукты|еда|супермаркет)", RegexOption.IGNORE_CASE)) -> Category.FOOD
+            body.contains(Regex("(транспорт|метро|такси|автобус)", RegexOption.IGNORE_CASE)) -> Category.TRANSPORT
+            body.contains(Regex("(развлечения|кино|театр)", RegexOption.IGNORE_CASE)) -> Category.ENTERTAINMENT
+            body.contains(Regex("(коммунальные|жкх|квартплата)", RegexOption.IGNORE_CASE)) -> Category.HOUSING
+            else -> Category.OTHER
         }
     }
-} 
+}

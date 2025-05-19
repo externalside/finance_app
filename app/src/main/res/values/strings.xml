@@ -28,7 +28,6 @@
     <string name="set_pin">Установить PIN-код</string>
     <string name="pin_hint">PIN-код (4 цифры)</string>
     <string name="set">Установить</string>
-    <string name="export_to_excel">Экспорт в Excel</string>
     <string name="expense_categories">Категории расходов</string>
     <string name="back">Назад</string>
 </resources>
