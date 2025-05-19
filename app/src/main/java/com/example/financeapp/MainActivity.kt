@@ -47,7 +47,6 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            val transactionViewModel: TransactionViewModel = hiltViewModel()
             val settingsViewModel: SettingsViewModel = hiltViewModel()
 
             val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
@@ -105,6 +104,12 @@ class MainActivity : ComponentActivity() {
                             }
                             composable("statistics") {
                                 StatisticsScreen(
+                                    onNavigateBack = { navController.navigateUp() },
+                                    onNavigateToChart = {navController.navigate("chart")}
+                                )
+                            }
+                            composable("chart") {
+                                ChartScreen(
                                     onNavigateBack = { navController.navigateUp() }
                                 )
                             }
