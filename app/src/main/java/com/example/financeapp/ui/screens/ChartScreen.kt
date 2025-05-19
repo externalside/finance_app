@@ -171,7 +171,7 @@ private fun createPieChart(context: Context, entries: List<PieEntry>): PieChart 
         setTransparentCircleAlpha(110)
         holeRadius = 58f
         transparentCircleRadius = 61f
-        setDrawCenterText(true)
+        setDrawCenterText(false)
         isRotationEnabled = true
         isHighlightPerTapEnabled = true
 
@@ -184,9 +184,8 @@ private fun createPieChart(context: Context, entries: List<PieEntry>): PieChart 
             Color.parseColor("#CC4429")
         )
         dataSet.valueTextSize = 14f
-        dataSet.valueTextColor = Color.TRANSPARENT
 
-        dataSet.setDrawValues(true)
+        dataSet.setDrawValues(false)
         dataSet.setDrawIcons(false)
         setDrawEntryLabels(false)
 

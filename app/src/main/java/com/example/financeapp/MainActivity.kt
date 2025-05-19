@@ -115,6 +115,7 @@ class MainActivity : ComponentActivity() {
                             }
                             composable("settings") {
                                 SettingsScreen(
+                                    settingsViewModel = settingsViewModel,
                                     onNavigateBack = { navController.navigateUp() },
                                     onNavigateToAbout = { navController.navigate("about") },
                                     onRequestSmsPermission = {

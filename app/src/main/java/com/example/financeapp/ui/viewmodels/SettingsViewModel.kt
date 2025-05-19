@@ -1,6 +1,7 @@
 package com.example.financeapp.ui.viewmodels
 
 import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -62,6 +63,12 @@ class SettingsViewModel @Inject constructor(
                     .apply()
             }
             _isDarkMode.value = newValue
+            withContext(Dispatchers.Main) {
+                AppCompatDelegate.setDefaultNightMode(
+                    if (newValue) AppCompatDelegate.MODE_NIGHT_YES
+                    else AppCompatDelegate.MODE_NIGHT_NO
+                )
+            }
         }
     }
 
